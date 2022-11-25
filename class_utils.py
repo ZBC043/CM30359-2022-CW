@@ -47,11 +47,10 @@ def build_dqn():
     return model
 
 class ddqn_agent(object):
-    def __init__(self, gamma, epsilon, buffer_size, batch_size):
-        #Spare vals: , epsilon_dec=0.996, epsilon_end=0.01, replace_target=100
-        #self.epsilon_dec = epsilon_dec
-        #self.epsilon_min = epsilon_end
-        #self.replace_target = replace_target
+    def __init__(self, gamma, epsilon, buffer_size, batch_size, epsilon_dec=0.996, epsilon_end=0.01, replace_target=100):
+        self.epsilon_dec = epsilon_dec
+        self.epsilon_min = epsilon_end
+        self.replace_target = replace_target
         self.action_space = [0, 1, 2, 3]
         self.actions = action_space_size
         self.gamma = gamma
@@ -80,6 +79,30 @@ class ddqn_agent(object):
     
     def print_buffer(self):
         self.buffer.print_buffer()
+    
+    def learn(self):
+        if self.buffer.buffer_idx > self.batch_size:
+            state, action, reward, new_state, done = self.buffer.sample_buffer(self.batch_size)
+            action_values = np.array(self.action_space, dtype=np.int8)
+            action_indices = np.dot(action, action_values)
+            
+            q_next = self.q_target.predict(new_state)
+            q_eval = self.q_eval.predict(new_state)
+            q_pred = self.q_eval.predict(state)
+            
+            max_actions = np.argmax(q_eval, axis=1)
+            
+            batch_index = np.arange(self.batch_size, dtype=np.int32)
+            
+            q_target[batch_index, action_indices] = reward + self.gamma * q_next[batch_index, max_actions.astype(int)] * done
+            
+            _ = self.q_eval.fit(state, q_target, verbose=0)
+            
+            self.epsilon = self.epsilon * self.epsilon_dec if self.epsilon > self.epsilon_min else self.epsilon_min
+            
+            if self.buffer.buffer_idx % self.replace_target == 0:
+                self.update_network_parameters()
+            
 
     def update_network_parameters(self):
         self.q_target.model.set_weights(self.q_eval.model.get_weights())
