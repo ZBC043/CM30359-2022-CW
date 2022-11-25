@@ -30,7 +30,13 @@ class replay_memory():
         
     def sample_buffer(self, batch_size):
         if self.size >= batch_size:
-            return np.random.choice(self.buffer[0:self.size], batch_size)
+            returns = []
+            batch = np.random.choice(self.buffer[0:self.size], batch_size)
+            for array in batch:
+                returns.append(array)
+            
+            return returns
+
         return 0
 
 
@@ -65,21 +71,32 @@ class ddqn_agent(object):
         self.buffer.append_buffer(state, reward, action, new_state, done)
 
     def choose_action(self, state):
-        print(state)
         state = np.array([state])   #neural network needs 2d array or 2d tensor 
-        print(state)
         actions = []
         rand = np.random.random()
         if rand < self.epsilon:
             action = np.random.choice(self.action_space)
         else:
-            print(state)
+        
             actions = self.q_eval.predict(state)
             action = np.argmax(actions)
         return action, actions
     
     def print_buffer(self):
         self.buffer.print_buffer()
+    
+    def calculate(self):
+        batch = self.buffer.sample_buffer(self.batch_size)
+        if(batch == 0): #Memory Smaller than Batch Size
+            
+            #Batch cannot be considered as no batch was returned
+            print() #Filler
+
+        else: #Memory >= Batch Size
+            action_list = batch[:2] #Perform Subscripting
+        
+        
+
 
     def update_network_parameters(self):
         self.q_target.model.set_weights(self.q_eval.model.get_weights())
